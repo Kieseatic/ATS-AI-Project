@@ -1,10 +1,13 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import json
+from models.matching_logic import match_jobs
 
 # Import parsing functions from the separated modules
-from api.resume_parsing import parse_pdf
-from api.job_parsing import parse_job_description, parse_text_job_description
+#from api.resume_parsing import parse_pdf
+#from api.job_parsing import parse_job_description, parse_text_job_description
+from api import *
+
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS to allow cross-origin requests
