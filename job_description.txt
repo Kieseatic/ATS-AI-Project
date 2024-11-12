@@ -1,0 +1,5 @@
+Title: Software Engineer
+Skills: Python, Django, REST API, SQL, Git
+Qualifications: Bachelor's in Computer Science
+Experience: 2+ years
+Responsibilities: Develop and maintain backend services

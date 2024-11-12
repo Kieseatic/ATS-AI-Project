@@ -5,6 +5,6 @@ venv/
 __pycache__/
 *.py[cod]
 
-# Ignore other environment and sensitive configuration files (if they exist)
+
 .env
 *.env

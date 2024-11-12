@@ -1,0 +1,23 @@
+[
+    {
+        "title": "Software Engineer",
+        "skills": ["Python", "Django", "REST API", "SQL", "Git"],
+        "qualifications": "Bachelor's in Computer Science or related field",
+        "experience_required": "2+ years",
+        "responsibilities": "Develop and maintain backend services for web applications."
+    },
+    {
+        "title": "Data Scientist",
+        "skills": ["Python", "Machine Learning", "Data Analysis", "Pandas", "SQL"],
+        "qualifications": "Master's in Data Science or related field",
+        "experience_required": "3+ years",
+        "responsibilities": "Analyze data and build predictive models to inform business decisions."
+    },
+    {
+        "title": "Front-End Developer",
+        "skills": ["JavaScript", "React", "HTML", "CSS", "Git"],
+        "qualifications": "Bachelor's in Computer Science or a related field",
+        "experience_required": "1+ years",
+        "responsibilities": "Develop and maintain user interfaces for web applications."
+    }
+]
