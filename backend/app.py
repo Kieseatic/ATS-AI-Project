@@ -2,6 +2,8 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import json
 from models.matching_logic import match_jobs
+from api.resume_parsing import parse_pdf
+from api.job_parsing import parse_job_description, parse_text_job_description
 
 # Import parsing functions from the separated modules
 #from api.resume_parsing import parse_pdf
@@ -62,11 +64,15 @@ def upload_resume():
     # Parsing the PDF content now
     resume_text = parse_pdf(file)
 
+    # Perform the matching logic with the extracted resume text
+    job_matches = match_jobs(resume_text, all_job_descriptions)
+
     # Testing the response when the file is successfully parsed
     response = {
         'message': "Resume received",
         "filename": file.filename,
-        "content preview": resume_text[:10000]
+        "content preview": resume_text[:10000],
+        "matches" : job_matches
     }
     return jsonify(response)
 
