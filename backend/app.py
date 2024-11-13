@@ -4,7 +4,7 @@ import json
 from models.matching_logic import match_jobs
 from api.resume_parsing import parse_pdf
 from api.job_parsing import parse_job_description, parse_text_job_description
-
+from api.interview_analysis import *
 # Import parsing functions from the separated modules
 #from api.resume_parsing import parse_pdf
 #from api.job_parsing import parse_job_description, parse_text_job_description
@@ -75,6 +75,29 @@ def upload_resume():
         "matches" : job_matches
     }
     return jsonify(response)
+
+@app.route('/api/upload_interview',methods=['POST'])
+def upload_interview():
+    #retrieving the uploaded file 
+    file= request.files.get('interview_video')
+
+    if not file :
+        return jsonify ({"erorr":"No interview file uploaded"}),400
+    
+    metadata = request.form.to_dict()
+    if not metadata:
+        return jsonify({"error": "Metadata is required"}), 400
+    
+    # Validate required metadata fields
+    required_fields = ["interviewee", "position"]
+    missing_fields = [field for field in required_fields if field not in metadata or not metadata[field].strip()]
+
+    if missing_fields:
+        return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
+
+    result = process_interview_video(file,metadata)
+
+    return jsonify(result)
 
 if __name__ == '__main__':
     app.run(debug=True)
