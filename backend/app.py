@@ -5,6 +5,7 @@ from models.matching_logic import match_jobs
 from api.resume_parsing import parse_pdf
 from api.job_parsing import parse_job_description, parse_text_job_description
 from api.interview_analysis import *
+from api.rag_integration import *
 # Import parsing functions from the separated modules
 #from api.resume_parsing import parse_pdf
 #from api.job_parsing import parse_job_description, parse_text_job_description
@@ -99,5 +100,29 @@ def upload_interview():
 
     return jsonify(result)
 
+@app.route('/api/analyze', methods=['POST'])
+def analyze():
+    """
+    Analyze the candidate's performance using RAG and OpenAI's summarization.
+    """
+    try:
+        # Get query and job keywords from the request
+        data = request.get_json()
+        query = data.get("query", "")
+        job_keywords = data.get("job_keywords", [])
+
+        if not query:
+            return jsonify({"error": "Query is required"}), 400
+        if not isinstance(job_keywords, list):
+            return jsonify({"error": "Job keywords should be a list"}), 400
+
+        # Perform the analysis
+        analysis_results = analyze_candidate_with_openai(query, job_keywords)
+
+        return jsonify(analysis_results)
+    except Exception as e:
+        print(f"ERROR: Failed to analyze interview - {e}")
+        return jsonify({"error": "Failed to analyze interview"}), 500
+    
 if __name__ == '__main__':
     app.run(debug=True)

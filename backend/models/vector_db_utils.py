@@ -43,6 +43,7 @@ def store_in_vector_db(transcription, metadata):
     print(f"FAISS index size after addition: {index.ntotal}")
 
     # Step 4: Store metadata
+    metadata["transcription"] = transcription  # Ensure transcription is part of metadata
     metadata_store.append(metadata)
     print(f"Metadata store size after addition: {len(metadata_store)}")
 
@@ -91,14 +92,20 @@ def query_vector_db(query, top_k=5):
     # Step 4: Retrieve metadata and similarity scores
     results = []  # To store the final results
     for i, idx in enumerate(indices[0]):
-        if idx < len(metadata_store):  # Ensure the index is valid
-            results.append({
+        if idx >= 0 and idx < len(metadata_store):  # Ensure the index is valid
+            # Debug: Log valid match
+            print(f"DEBUG: Match found - Index: {idx}, Similarity: {distances[0][i]}")
+
+            # Include transcription in the result if available
+            result = {
                 "metadata": metadata_store[idx],
-                "similarity": float(distances[0][i])
-            })
+                "similarity": float(distances[0][i]),
+                "transcription": metadata_store[idx].get("transcription", "")
+            }
+            results.append(result)
         else:
-            # Debug: Print warning for invalid index
-            print(f"Warning: Invalid index {idx}. Metadata store size: {len(metadata_store)}")
+            # Debug: Log warning for invalid index
+            print(f"WARNING: Invalid index {idx}. Metadata store size: {len(metadata_store)}")
 
     # Debug: Print final query results
     print("Query results:", results)
