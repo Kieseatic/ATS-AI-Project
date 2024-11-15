@@ -1,10 +1,16 @@
-# Ignore the virtual environment directory
-venv/
+# Frontend
+frontend/node_modules/
+frontend/build/
+frontend/.env
 
-# Ignore Python cache and compiled files
-__pycache__/
-*.py[cod]
+# Backend
+venv
+backend/__pycache__/
+backend/.env
 
-
-.env
-*.env
+# General
+node_modules/
+*.log
+.DS_Store
+.vscode/
+.idea/
