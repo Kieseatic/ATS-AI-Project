@@ -6,7 +6,7 @@ frontend/.env
 # Backend
 venv
 backend/__pycache__/
-backend/.env
+.env
 
 # General
 node_modules/
@@ -14,3 +14,4 @@ node_modules/
 .DS_Store
 .vscode/
 .idea/
+.env  # Ensure this line is here
