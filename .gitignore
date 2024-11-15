@@ -6,7 +6,7 @@ frontend/.env
 # Backend
 venv
 backend/__pycache__/
-.env
+backend/.env
 
 # General
 node_modules/
