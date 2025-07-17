@@ -1,17 +1,13 @@
 {
-  "name": "project-root",
+  "name": "ats-ai-backend",
   "version": "1.0.0",
   "private": true,
-  "devDependencies": {
-    "concurrently": "^9.1.0"
-  },
   "scripts": {
-    "start": "dotenv -e .env react-scripts start",
-    "start:frontend": "cd frontend && npm start",
-    "start:backend": "cd backend && python app.py",
-    "start:both": "concurrently \"npm run start:frontend\" \"npm run start:backend\""
+    "build": "echo 'No build step needed for Python backend'",
+    "start": "cd backend && python app.py",
+    "start:backend": "cd backend && python app.py"
   },
-  "dependencies": {
-    "dotenv": "^16.4.5"
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

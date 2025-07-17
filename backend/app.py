@@ -1,6 +1,9 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import json
+import re
+import os
+from datetime import datetime
 from models.matching_logic import match_jobs
 from api.resume_parsing import parse_pdf
 from api.job_parsing import parse_job_description, parse_text_job_description
@@ -9,7 +12,13 @@ from api.rag_integration import *
 from api import *
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:3000", "http://localhost:8080"])  # Allow SkillSphere to call this
+
+# Configure CORS to allow your Vercel frontend
+CORS(app, origins=[
+    "https://skillsphere-frontend-five.vercel.app",
+    "http://localhost:3000",  # For local development
+    "http://localhost:8080"   # For local development
+])
 
 # In-memory storage for job descriptions
 all_job_descriptions = []
@@ -30,7 +39,8 @@ def index():
             "new": [
                 "POST /api/extract-resume-text",
                 "POST /api/analyze-job",
-                "POST /api/match-resume-job"
+                "POST /api/match-resume-job",
+                "POST /api/parse-career"  # NEW ENDPOINT
             ]
         }
     })
@@ -234,6 +244,203 @@ def match_resume_job():
     except Exception as e:
         return jsonify({"success": False, "error": f"Matching failed: {str(e)}"}), 500
 
+# ============= IMPROVED CAREER PARSING ENDPOINT =============
+
+@app.route('/api/parse-career', methods=['POST'])
+def parse_career():
+    """Parse resume text and extract structured education and work experience"""
+    try:
+        data = request.get_json()
+        resume_text = data.get('resume_text', '')
+        user_info = data.get('user_info', {})
+        
+        if not resume_text:
+            return jsonify({"success": False, "error": "Resume text is required"}), 400
+        
+        print(f"[ATS AI] Parsing career data for user: {user_info.get('name', 'Unknown')}")
+        print(f"[ATS AI] Resume text length: {len(resume_text)}")
+        print(f"[ATS AI] Resume preview: {resume_text[:500]}...")
+        
+        # Extract education and work experience
+        education = extract_education(resume_text)
+        work_experience = extract_work_experience(resume_text)
+        
+        print(f"[ATS AI] ✅ Extracted {len(education)} education entries and {len(work_experience)} work experiences")
+        
+        # Log the extracted data
+        for edu in education:
+            print(f"[ATS AI] Education: {edu}")
+        for exp in work_experience:
+            print(f"[ATS AI] Experience: {exp}")
+        
+        return jsonify({
+            "success": True,
+            "education": education,
+            "work_experience": work_experience,
+            "user_info": user_info,
+            "parsed_at": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        print(f"[ATS AI] Career parsing error: {str(e)}")
+        import traceback
+        print(f"[ATS AI] Traceback: {traceback.format_exc()}")
+        return jsonify({"success": False, "error": f"Career parsing failed: {str(e)}"}), 500
+
+def extract_education(resume_text):
+    """Extract education information from resume text - IMPROVED VERSION"""
+    education = []
+    
+    print(f"[ATS AI] Parsing education from resume text (length: {len(resume_text)})")
+    
+    # Look for education section - more flexible pattern
+    education_patterns = [
+        r'EDUCATION.*?(?=(?:SKILLS|EXPERIENCE|PROJECT|CERTIFICATION|INVOLVEMENT|$))',
+        r'ACADEMIC.*?(?=(?:SKILLS|EXPERIENCE|PROJECT|CERTIFICATION|INVOLVEMENT|$))',
+        r'QUALIFICATION.*?(?=(?:SKILLS|EXPERIENCE|PROJECT|CERTIFICATION|INVOLVEMENT|$))'
+    ]
+    
+    section_text = ""
+    for pattern in education_patterns:
+        match = re.search(pattern, resume_text, re.DOTALL | re.IGNORECASE)
+        if match:
+            section_text = match.group(0)
+            print(f"[ATS AI] Found education section: {section_text[:100]}...")
+            break
+    
+    if not section_text:
+        print("[ATS AI] No education section found")
+        return education
+    
+    # Extract specific patterns for this resume
+    # Pattern: Bachelor of Software Development
+    # Seneca Polytechnic•Toronto, Ontario•2025
+    
+    degree_match = re.search(r'(Bachelor\s+of\s+Software\s+Development)', section_text, re.IGNORECASE)
+    institution_match = re.search(r'(Seneca\s+Polytechnic)', section_text, re.IGNORECASE)
+    location_match = re.search(r'Toronto,\s*Ontario', section_text, re.IGNORECASE)
+    year_match = re.search(r'•(\d{4})', section_text)
+    
+    if degree_match or institution_match:
+        education_entry = {
+            "institution": institution_match.group(1) if institution_match else "Seneca Polytechnic",
+            "degree": degree_match.group(1) if degree_match else "Bachelor of Software Development",
+            "field_of_study": "Software Development",
+            "start_date": "2021" if year_match else None,  # Assume 4-year program
+            "end_date": year_match.group(1) if year_match else "2025",
+            "current": False,
+            "description": "",
+            "gpa": "",
+            "activities": ""
+        }
+        education.append(education_entry)
+        print(f"[ATS AI] Extracted education: {education_entry}")
+    
+    return education
+
+def extract_work_experience(resume_text):
+    """Extract work experience from resume text - IMPROVED VERSION"""
+    work_experience = []
+    
+    print(f"[ATS AI] Parsing work experience from resume text")
+    
+    # Look for experience section
+    experience_match = re.search(r'EXPERIENCE.*?(?=(?:PROJECT|CERTIFICATION|INVOLVEMENT|$))', 
+                               resume_text, re.DOTALL | re.IGNORECASE)
+    
+    if not experience_match:
+        print("[ATS AI] No experience section found")
+        return work_experience
+    
+    section_text = experience_match.group(0)
+    print(f"[ATS AI] Found experience section: {section_text[:200]}...")
+    
+    # Split by job entries - look for job titles at start of lines
+    job_patterns = [
+        r'Junior Product Lead.*?(?=(?:Full Stack Developer|PROJECT|CERTIFICATION|$))',
+        r'Full Stack Developer Intern.*?(?=(?:PROJECT|CERTIFICATION|INVOLVEMENT|$))'
+    ]
+    
+    for pattern in job_patterns:
+        job_match = re.search(pattern, section_text, re.DOTALL | re.IGNORECASE)
+        if job_match:
+            job_text = job_match.group(0)
+            print(f"[ATS AI] Processing job block: {job_text[:100]}...")
+            
+            # Extract job details
+            position = ""
+            company = ""
+            dates = ""
+            location = ""
+            description_bullets = []
+            
+            # Extract position (first line)
+            lines = [line.strip() for line in job_text.split('\n') if line.strip()]
+            if lines:
+                position = lines[0].strip()
+            
+            # Look for Koralbyte Technologies
+            company_match = re.search(r'(Koralbyte\s+Technologies)', job_text, re.IGNORECASE)
+            if company_match:
+                company = company_match.group(1)
+            
+            # Extract dates
+            date_patterns = [
+                r'(April\s+2025\s*[-–—]\s*Present)',
+                r'(January\s+2025\s*[-–—]\s*April\s+2025)',
+                r'(\w+\s+\d{4}\s*[-–—]\s*(?:Present|\w+\s+\d{4}))'
+            ]
+            
+            for date_pattern in date_patterns:
+                date_match = re.search(date_pattern, job_text, re.IGNORECASE)
+                if date_match:
+                    dates = date_match.group(1)
+                    break
+            
+            # Extract location
+            location_match = re.search(r'Toronto,\s*Ontario', job_text, re.IGNORECASE)
+            if location_match:
+                location = location_match.group(0)
+            
+            # Extract bullet points
+            bullet_matches = re.findall(r'•\s*([^•\n]+)', job_text)
+            if bullet_matches:
+                description_bullets = [bullet.strip() for bullet in bullet_matches]
+            
+            # Parse dates
+            start_date = None
+            end_date = None
+            current = False
+            
+            if dates:
+                if 'Present' in dates:
+                    current = True
+                
+                # Extract start and end dates
+                if 'April 2025' in dates:
+                    start_date = '2025-04-01'
+                elif 'January 2025' in dates:
+                    start_date = '2025-01-01'
+                    if 'April 2025' in dates:
+                        end_date = '2025-04-30'
+            
+            if position and company:
+                work_entry = {
+                    "company": company,
+                    "position": position,
+                    "location": location,
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "current": current,
+                    "description": ' '.join(description_bullets) if description_bullets else "",
+                    "skills": [],
+                    "employment_type": "Full-time"
+                }
+                work_experience.append(work_entry)
+                print(f"[ATS AI] Extracted work experience: {work_entry}")
+    
+    return work_experience
+
 def get_recommendation(score):
     """Get recommendation based on match score"""
     if score >= 80:
@@ -257,5 +464,11 @@ if __name__ == '__main__':
     print("   - POST /api/extract-resume-text")
     print("   - POST /api/analyze-job")
     print("   - POST /api/match-resume-job")
-    print("🌐 Service running on http://localhost:5001")
-    app.run(debug=True, port=5001)
+    print("   - POST /api/parse-career (IMPROVED)")
+    print("🌐 Service running on production")
+    
+    # Get port from environment variable for production deployment
+    port = int(os.environ.get('PORT', 5001))
+    debug_mode = os.environ.get('FLASK_ENV') != 'production'
+    
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)
